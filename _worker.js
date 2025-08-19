@@ -118,7 +118,7 @@ function getAllConfig(request, hostName, proxyList, page = 0) {
 
     // Build HTML
     const document = new Document(request);
-    document.setTitle("Welcome to <span class='text-blue-500 font-semibold'>Nautica</span>");
+    document.setTitle("Welcome to <span class='text-blue-500 font-semibold'>Nautica</span>"); document.addInfo(`Total: ${proxyList.length}`); document.addInfo(`Page: ${page}/${Math.floor(proxyList.length / PROXY_PER_PAGE)}`);
     document.addInfo(`Total: ${proxyList.length}`);
     document.addInfo(`Page: ${page}/${Math.floor(proxyList.length / PROXY_PER_PAGE)}`);
 
@@ -170,7 +170,7 @@ function getAllConfig(request, hostName, proxyList, page = 0) {
 
     // Build pagination
     document.addPageButton("Prev", `/sub/${page > 0 ? page - 1 : 0}`, page > 0 ? false : true);
-    document.addPageButton("Next", `/sub/${page + 1}`, page < Math.floor(proxyList.length / 10) ? false : true);
+    document.addPageButton("Next", `/sub/${page + 1}`, page < Math.floor(proxyList.length / PROXY_PER_PAGE) ? false : true);
 
     return document.build();
   } catch (error) {
@@ -199,7 +199,9 @@ export default {
           const proxyKey = proxyKeys[Math.floor(Math.random() * proxyKeys.length)];
           const kvProxy = await getKVProxyList();
 
-          proxyIP = kvProxy[proxyKey][Math.floor(Math.random() * kvProxy[proxyKey].length)];
+          proxyIP = (Array.isArray(kvProxy[proxyKey]) && kvProxy[proxyKey].length)
+            ? kvProxy[proxyKey][Math.floor(Math.random() * kvProxy[proxyKey].length)]
+            : "";
 
           return await websocketHandler(request);
         } else if (proxyMatch) {
@@ -231,7 +233,17 @@ export default {
           headers: { "Content-Type": "text/html;charset=utf-8" },
         });
       } else if (url.pathname.startsWith("/check")) {
-        const target = url.searchParams.get("target").split(":");
+        const rawTarget = url.searchParams.get("target") || "";
+        if (!rawTarget || !rawTarget.includes(":")) {
+          return new Response(JSON.stringify({ error: "invalid target" }), {
+            status: 400,
+            headers: {
+              ...CORS_HEADER_OPTIONS,
+              "Content-Type": "application/json",
+            },
+          });
+        }
+        const target = rawTarget.split(":");
         const result = await checkProxyHealth(target[0], target[1] || "443");
 
         return new Response(JSON.stringify(result), {
