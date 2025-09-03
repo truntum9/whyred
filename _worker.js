@@ -86,11 +86,6 @@ async function getProxyList(proxyBankUrl = PROXY_BANK_URL) {
 
   return cachedProxyList;
 }
-      .filter(Boolean);
-  }
-
-  return cachedProxyList;
-}
 
 async function reverseProxy(request, target, targetPath) {
   const targetUrl = new URL(request.url);
