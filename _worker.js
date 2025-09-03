@@ -50,8 +50,7 @@ async function getKVProxyList(kvProxyUrl = KV_PROXY_URL) {
 
 async function getProxyList(proxyBankUrl = PROXY_BANK_URL) {
   /**
-   * Format:
-   *
+   * Format CSV:
    * <IP>,<Port>,<Country ID>,<ORG>
    * Contoh:
    * 1.1.1.1,443,SG,Cloudflare Inc.
@@ -63,18 +62,30 @@ async function getProxyList(proxyBankUrl = PROXY_BANK_URL) {
   const proxyBank = await fetch(proxyBankUrl);
   if (proxyBank.status == 200) {
     const text = (await proxyBank.text()) || "";
-
     const proxyString = text.split("\n").filter(Boolean);
+
     cachedProxyList = proxyString
       .map((entry) => {
-        const [proxyIP, proxyPort, country, org] = entry.split(",");
-        return {
-          proxyIP: proxyIP || "Unknown",
-          proxyPort: proxyPort || "Unknown",
-          country: country || "Unknown",
-          org: org || "Unknown Org",
-        };
+        try {
+          const parts = entry.split(",");
+          if (parts.length < 2) return null; // minimal harus ada IP dan Port
+          const proxyIP = parts[0].trim();
+          const proxyPort = parts[1].trim();
+          const country = parts[2] ? parts[2].trim() : "XX";
+          const org = parts[3] ? parts[3].trim() : "Unknown";
+
+          // generate trojan URL (dummy password)
+          return `trojan://password@${proxyIP}:${proxyPort}?sni=${proxyIP}#${country}-${org}`;
+        } catch (e) {
+          console.error("Skip line (invalid format):", entry, e);
+          return null;
+        }
       })
+      .filter(Boolean); // buang null
+  }
+
+  return cachedProxyList;
+}
       .filter(Boolean);
   }
 
